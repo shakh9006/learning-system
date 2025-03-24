@@ -1,0 +1,273 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  userId     Int      @id @default(autoincrement())
+  username   String
+  email      String   @unique
+  password   String
+  hasPremium Boolean  @default(false)
+  role       Roles    @default(USER)
+  isBlocked  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  token            Tokens?
+  dictation        Dictations[]
+  pointsHistory    PointsHistory[]
+  point            Points?
+  categories       Categories[]
+  vocabularyGroup  VocabularyGroup[]
+  settings         Settings[]
+  userAchievements UserAchievements[]
+}
+
+model Tokens {
+  refreshToken String @unique
+  exp          DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   Users @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId Int   @unique
+}
+
+model Settings {
+  settingsId  Int      @id @default(autoincrement())
+  optionName  SettingsOptions
+  optionValue String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   Users @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId Int
+}
+
+model Achievements {
+  achievementId Int              @id @default(autoincrement())
+  name          String           @unique
+  description   String?
+  points        Int              @db.SmallInt
+  type          AchievementsType @default(GENERAL)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  userAchievements UserAchievements[]
+}
+
+model UserAchievements {
+  userAchievementsId Int           @id @default(autoincrement())
+  userId             Int
+  achievementId      Int
+  earnedAt           DateTime      @default(now())
+
+  user               Users         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  achievement        Achievements  @relation(fields: [achievementId], references: [achievementId], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+model Points {
+  pointsId  Int      @id @default(autoincrement())
+  points    Int      @db.SmallInt @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   Users @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId Int   @unique
+
+  pointsHistory PointsHistory[]
+}
+
+model PointsHistory {
+  pointHistoryId  Int               @id          @default(autoincrement())
+  point           Int               @db.SmallInt @default(0) // Points added/lost
+  reason          PointsReason
+  message         String?
+  textId          Int?
+  achievementId   Int?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user            Users             @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId          Int
+
+  points          Points?           @relation(fields: [pointsId], references: [pointsId], onDelete: Cascade)
+  pointsId        Int?
+
+}
+
+
+model VocabularyGroup {
+  vocabularyGroupId Int      @id @default(autoincrement())
+  name              String   @db.VarChar(255)
+  slug              String   @db.VarChar(255)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user   Users @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId Int
+
+  vocabulary Vocabulary[]
+}
+
+model Vocabulary {
+  vocabularyId             Int      @id @default(autoincrement())
+  word                     String   @db.VarChar(100)
+  speaker                  String
+  translation              String   @db.VarChar(100)
+  transcription            String   @db.VarChar(100)
+  wordFileId               Int?     @unique
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  relatedId                Int?
+
+  vocabularyGroup   VocabularyGroup @relation(fields: [vocabularyGroupId], references: [vocabularyGroupId], onDelete: Cascade)
+  vocabularyGroupId Int
+
+  wordAudioFile        VocabularyAudioFiles? @relation("WordFile", fields: [wordFileId], references: [vocabularyAudioFileId])
+}
+
+model VocabularyAudioFiles {
+  vocabularyAudioFileId  Int      @id @default(autoincrement())
+  path                   String
+
+  wordFile        Vocabulary? @relation("WordFile")
+}
+
+model Categories {
+  categoryId   Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  categoryType CategoryType
+  slug         String   @db.VarChar(100)
+  icon         String   @db.VarChar(100)
+  isPublic     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  text   Texts[]
+  user   Users @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId Int
+}
+
+model Texts {
+  textId    Int      @id @default(autoincrement())
+  content   String
+  wordCount Int      @db.SmallInt
+  level     TextLevel
+  hash      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  relatedId Int?
+
+  category   Categories @relation(fields: [categoryId], references: [categoryId], onDelete: Cascade)
+  categoryId Int
+  audioFile  AudioFiles[]
+  dictation  Dictations[]
+}
+
+model AudioFiles {
+  audioFileId    Int      @id @default(autoincrement())
+  speakerId      String
+  readingMode    ReadingMode
+  fileName       String
+  hashedFileName String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  text   Texts @relation(fields: [textId], references: [textId], onDelete: Cascade)
+  textId Int
+}
+
+model Dictations {
+  dictationId Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user           Users @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId         Int
+  text           Texts @relation(fields: [textId], references: [textId], onDelete: Cascade)
+  textId         Int
+  performance    Performance?
+
+  @@unique([userId, textId])
+}
+
+model Performance {
+  performanceId   Int      @id @default(autoincrement())
+  wpm             Int      @db.SmallInt
+  accuracy        Float
+  totalWords      Int      @db.SmallInt
+  correctWords    Int      @db.SmallInt
+  errorsCount     Int      @db.SmallInt
+  duration        Int      @db.SmallInt
+  score           Int      @db.SmallInt
+  wpmPenalty      Int
+  accuracyPenalty Int
+  userInput       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  dictation   Dictations @relation(fields: [dictationId], references: [dictationId], onDelete: Cascade)
+  dictationId Int @unique
+}
+
+model Speakers {
+    speakerId   Int @id @default(autoincrement())
+    name        String
+    speakerCode String
+}
+
+enum Roles {
+  ADMIN
+  USER
+  TEST
+}
+
+enum ReadingMode {
+  chunk
+  sentence
+  full
+}
+
+enum CategoryType {
+   system
+   custom
+}
+
+enum TextLevel {
+    easy
+    medium
+    hard
+}
+
+enum SettingsOptions {
+    speakerId
+    askAddNewWord
+}
+
+enum PointsReason {
+  task
+  vocabulary
+  achievement
+}
+
+enum AchievementsType {
+  GENERAL
+  TEXTS
+  STREAK
+  VOCABULARY
+  LEADERBOARD
+}
