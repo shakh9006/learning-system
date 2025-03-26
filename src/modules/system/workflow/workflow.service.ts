@@ -5,7 +5,7 @@ import { Categories as Category } from '@prisma/client';
 import { TextsService } from '../../rest-api/texts/texts.service';
 import { TextProcessingService } from '../text-processing/text-processing.service';
 import { GeneratedText } from '../chat-gtp/types/GeneratedText';
-import { CreateTextDto } from '../../rest-api/texts/dto/create-text.dto';
+import { CreateDictationTextDto } from '../../rest-api/texts/dto/create-dictation-text.dto';
 import { IConvertedResult } from '../../../common/types/ConvertedResult';
 import { IConvertToMp3Result } from '../../../common/types/ConvertToMp3Result';
 import { AudioProcessingService } from '../audio-processing/audio-processing.service';
@@ -121,7 +121,7 @@ export class WorkflowService {
     category: Category,
     speakers: string[],
   ): Promise<void> {
-    const createData: CreateTextDto =
+    const createData: CreateDictationTextDto =
       this.textsService.prepareCreateTextData(t);
 
     const text = await this.textsService.create(

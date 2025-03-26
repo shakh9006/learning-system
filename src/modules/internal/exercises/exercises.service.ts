@@ -1,15 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Dictations as Dictation } from '@prisma/client';
-import { DictationsRepository } from './dictations.repository';
+import { ExercisesRepository } from './exercises.repository';
 import { TextsService } from '../../rest-api/texts/texts.service';
 import { PerformanceService } from '../performance/performance.service';
 import { CreatePerformanceDto } from '../performance/dto/create-performance.dto';
 import { IHighlightType } from './types/highlight.type';
 
 @Injectable()
-export class DictationsService {
+export class ExercisesService {
   constructor(
-    private readonly dictationsRepository: DictationsRepository,
+    private readonly dictationsRepository: ExercisesRepository,
     private readonly textsService: TextsService,
     private readonly performanceService: PerformanceService,
   ) {}

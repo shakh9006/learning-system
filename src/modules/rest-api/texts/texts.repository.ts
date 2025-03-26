@@ -1,20 +1,50 @@
 import { Injectable } from '@nestjs/common';
-import { Texts as Text, PrismaClient } from '@prisma/client';
-import { CreateTextDto } from './dto/create-text.dto';
-import { UpdateTextDto } from './dto/update-text.dto';
+import { Texts as Text, PrismaClient, TextType } from '@prisma/client';
+import { CreateDictationTextDto } from './dto/create-dictation-text.dto';
+import { CreateSpeechTextDto } from './dto/create-speech-text.dto';
+import { CreateDialogTextDto } from './dto/create-dialog-text.dto';
+import { UpdateDictationTextDto } from './dto/update-dictation-text.dto';
 import { Levels } from '../../../common/types/Levels';
+import { UpdateDialogTextDto } from './dto/update-dialog-text.dto';
+import { UpdateSpeechTextDto } from './dto/update-speech-text.dto';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export class TextsRepository {
-  async create(categoryId: number, data: CreateTextDto): Promise<Text> {
+  async createDictationText(
+    categoryId: number,
+    data: CreateDictationTextDto,
+  ): Promise<Text> {
     return await prisma.texts.create({
       data: {
         content: data.content,
-        wordCount: data.wordCount,
         level: data.level,
-        hash: data.hash,
+        type: data.type,
+        category: {
+          connect: {
+            categoryId,
+          },
+        },
+        dictationMeta: {
+          create: {
+            hash: data.hash,
+            wordCount: data.wordCount,
+          },
+        },
+      },
+    });
+  }
+
+  async createSpeechText(
+    categoryId: number,
+    data: CreateSpeechTextDto,
+  ): Promise<Text> {
+    return await prisma.texts.create({
+      data: {
+        content: data.content,
+        level: data.level,
+        type: data.type,
         category: {
           connect: {
             categoryId,
@@ -24,7 +54,62 @@ export class TextsRepository {
     });
   }
 
-  async update(textId: number, data: UpdateTextDto): Promise<Text> {
+  async createDialogText(
+    categoryId: number,
+    data: CreateDialogTextDto,
+  ): Promise<Text> {
+    return await prisma.texts.create({
+      data: {
+        content: data.content,
+        level: data.level,
+        type: data.type,
+        category: {
+          connect: {
+            categoryId,
+          },
+        },
+      },
+    });
+  }
+
+  async updateDictationText(
+    textId: string,
+    data: UpdateDictationTextDto,
+  ): Promise<Text> {
+    return await prisma.texts.update({
+      where: {
+        textId,
+      },
+      data: {
+        ...(data.content ? { content: data.content } : {}),
+        ...(data.level ? { level: data.level } : {}),
+        dictationMeta: {
+          update: {
+            ...(data.hash ? { hash: data.hash } : {}),
+            ...(data.wordCount ? { wordCount: data.wordCount } : {}),
+            ...(data.relatedId ? { relatedId: data.relatedId } : {}),
+          },
+        },
+      },
+    });
+  }
+
+  async updateDialogText(
+    textId: string,
+    data: UpdateDialogTextDto,
+  ): Promise<Text> {
+    return await prisma.texts.update({
+      where: {
+        textId,
+      },
+      data: data,
+    });
+  }
+
+  async updateSpeechText(
+    textId: string,
+    data: UpdateSpeechTextDto,
+  ): Promise<Text> {
     return await prisma.texts.update({
       where: {
         textId,
@@ -36,7 +121,11 @@ export class TextsRepository {
   async findAll(): Promise<Text[]> {
     return await prisma.texts.findMany({
       include: {
-        audioFile: true,
+        dictationMeta: {
+          include: {
+            audioFile: true,
+          },
+        },
       },
     });
   }
@@ -44,50 +133,65 @@ export class TextsRepository {
   async findFiltered(filters: {
     level?: Levels;
     category?: string;
+    type?: TextType;
   }): Promise<Text[]> {
     let where = {};
 
-    if (filters.category || filters.level) {
+    if (filters.category || filters.level || filters.type) {
       where = {
         ...(filters.category ? { categoryId: +filters.category } : {}),
         ...(filters.level ? { level: filters.level } : {}),
+        ...(filters.type ? { type: filters.type } : {}),
       };
     }
 
     return await prisma.texts.findMany({
       where: where,
-    });
-  }
-
-  async findById(textId: number): Promise<Text> {
-    return await prisma.texts.findFirst({
-      where: {
-        textId,
-      },
-    });
-  }
-
-  async getTextData(textId: number, speakerId: string): Promise<Text> {
-    return await prisma.texts.findFirst({
-      where: {
-        textId,
-      },
       include: {
-        audioFile: {
-          where: {
-            speakerId,
+        dictationMeta: {
+          include: {
+            audioFile: true,
           },
         },
       },
     });
   }
 
-  async getUserTextPerformance(userId: number, textId: number): Promise<any> {
-    return await prisma.dictations.findFirst({
+  async findById(textId: string): Promise<Text> {
+    return await prisma.texts.findUnique({
       where: {
-        userId,
         textId,
       },
+      include: {
+        dictationMeta: {
+          include: {
+            audioFile: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getTextData(textId: string, speakerId?: string): Promise<Text> {
+    return await prisma.texts.findUnique({
+      where: {
+        textId,
+      },
+      ...(speakerId
+        ? {
+            include: {
+              dictationMeta: {
+                include: {
+                  audioFile: {
+                    where: {
+                      speakerId,
+                    },
+                  },
+                },
+              },
+            },
+          }
+        : {}),
     });
   }
 

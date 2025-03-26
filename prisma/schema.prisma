@@ -25,7 +25,7 @@ model Users {
   updatedAt  DateTime @updatedAt
 
   token            Tokens?
-  dictation        Dictations[]
+  exercises        Exercises[]
   pointsHistory    PointsHistory[]
   point            Points?
   categories       Categories[]
@@ -163,19 +163,31 @@ model Categories {
 }
 
 model Texts {
-  textId    Int      @id @default(autoincrement())
-  content   String
-  wordCount Int      @db.SmallInt
-  level     TextLevel
-  hash      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  relatedId Int?
+  textId      String   @id @default(uuid())
+  content     String
+  level       TextLevel
+  type        TextType
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dictationMeta DictationMeta?
 
   category   Categories @relation(fields: [categoryId], references: [categoryId], onDelete: Cascade)
   categoryId Int
+  exercises  Exercises[]
+}
+
+model DictationMeta {
+  dictationMetaId    Int  @id @default(autoincrement())
+  textId    String   @unique
+  hash      String
+  wordCount Int      @db.SmallInt
+  relatedId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  text       Texts     @relation(fields: [textId], references: [textId])
   audioFile  AudioFiles[]
-  dictation  Dictations[]
 }
 
 model AudioFiles {
@@ -187,41 +199,41 @@ model AudioFiles {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  text   Texts @relation(fields: [textId], references: [textId], onDelete: Cascade)
-  textId Int
+  text   DictationMeta @relation(fields: [textId], references: [textId], onDelete: Cascade)
+  textId String
 }
 
-model Dictations {
-  dictationId Int      @id @default(autoincrement())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Exercises {
+  exerciseId  Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  user           Users @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  userId         Int
-  text           Texts @relation(fields: [textId], references: [textId], onDelete: Cascade)
-  textId         Int
-  performance    Performance?
+  user        Users     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId      Int
+  text        Texts     @relation(fields: [textId], references: [textId], onDelete: Cascade)
+  textId      String
+  performance Performance?
 
   @@unique([userId, textId])
 }
 
 model Performance {
   performanceId   Int      @id @default(autoincrement())
-  wpm             Int      @db.SmallInt
+  wpm             Int?     @db.SmallInt    // For DICTATION and SPEECH
   accuracy        Float
-  totalWords      Int      @db.SmallInt
-  correctWords    Int      @db.SmallInt
-  errorsCount     Int      @db.SmallInt
-  duration        Int      @db.SmallInt
+  totalWords      Int?     @db.SmallInt    // For DICTATION
+  correctWords    Int?     @db.SmallInt    // For DICTATION
+  errorsCount     Int?     @db.SmallInt    // For DICTATION
+  duration        Int?     @db.SmallInt    // For DICTATION and SPEECH
   score           Int      @db.SmallInt
-  wpmPenalty      Int
-  accuracyPenalty Int
-  userInput       String
+  wpmPenalty      Int?                     // For DICTATION and SPEECH
+  accuracyPenalty Int?                     // For DICTATION and SPEECH
+  userInput       String?                  // For DICTATION and SPEECH
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  dictation   Dictations @relation(fields: [dictationId], references: [dictationId], onDelete: Cascade)
-  dictationId Int @unique
+  exercise        Exercises @relation(fields: [exerciseId], references: [exerciseId])
+  exerciseId      Int      @unique
 }
 
 model Speakers {
@@ -270,4 +282,10 @@ enum AchievementsType {
   STREAK
   VOCABULARY
   LEADERBOARD
+}
+
+enum TextType {
+  DICTATION
+  SPEECH
+  DIALOG
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { CreateTextDto } from './dto/create-text.dto';
+import { CreateDictationTextDto } from './dto/create-dictation-text.dto';
 import { TextsRepository } from './texts.repository';
-import { Texts as Text } from '@prisma/client';
+import { Texts as Text, TextType } from '@prisma/client';
 import { GeneratedText } from '../../system/chat-gtp/types/GeneratedText';
 import { FilteredTextDto } from './dto/filtered-text.dto';
 import { TextQueryDto } from './dto/text-query.dto';
@@ -9,6 +9,7 @@ import generateHash from '../../../utils/generateHash';
 import { SettingsService } from '../settings/settings.service';
 import { StorageService } from '../../system/storage/storage.service';
 import { PerformanceService } from '../../internal/performance/performance.service';
+import { CreateSpeechTextDto } from './dto/create-speech-text.dto';
 
 @Injectable()
 export class TextsService {
@@ -19,11 +20,34 @@ export class TextsService {
     private readonly performanceService: PerformanceService,
   ) {}
 
-  async create(
+  async createDictationText(
     categoryId: number,
-    createTextDto: CreateTextDto,
+    createTextDto: CreateDictationTextDto,
   ): Promise<Text> {
-    return await this.textsRepository.create(categoryId, createTextDto);
+    return await this.textsRepository.createDictationText(
+      categoryId,
+      createTextDto,
+    );
+  }
+
+  async createSpeechText(
+    categoryId: number,
+    createTextDto: CreateSpeechTextDto,
+  ): Promise<Text> {
+    return await this.textsRepository.createSpeechText(
+      categoryId,
+      createTextDto,
+    );
+  }
+
+  async createDialogText(
+    categoryId: number,
+    createTextDto: CreateSpeechTextDto,
+  ): Promise<Text> {
+    return await this.textsRepository.createDialogText(
+      categoryId,
+      createTextDto,
+    );
   }
 
   async findAll(): Promise<Text[]> {
@@ -47,24 +71,28 @@ export class TextsService {
     );
   }
 
-  async findOne(id: number): Promise<Text> {
+  async findOne(id: string): Promise<Text> {
     return await this.textsRepository.findById(id);
   }
 
-  async getTextData(userId: number, id: number): Promise<any> {
+  async getTextData(userId: number, id: string): Promise<any> {
     const speakerId = await this.settingsService.findByKey(userId, 'speakerId');
     const res = (await this.textsRepository.getTextData(
       id,
       speakerId.optionValue,
-    )) as Text & { audioFile: any };
+    )) as any;
 
     if (res) {
       const audioFiles = {
-        chunk: res?.audioFile?.filter((audio) => audio.readingMode === 'chunk'),
-        sentences: res?.audioFile?.filter(
+        chunk: res?.dictationMeta?.audioFile?.filter(
+          (audio) => audio.readingMode === 'chunk',
+        ),
+        sentences: res?.dictationMeta?.audioFile?.filter(
           (audio) => audio.readingMode === 'sentence',
         ),
-        full: res?.audioFile?.find((audio) => audio.readingMode === 'full'),
+        full: res?.dictationMeta?.audioFile?.find(
+          (audio) => audio.readingMode === 'full',
+        ),
       };
 
       const data = {
@@ -103,7 +131,7 @@ export class TextsService {
     return res || null;
   }
 
-  async getUserTextPerformance(userId: number, textId: number): Promise<any> {
+  async getUserTextPerformance(userId: number, textId: string): Promise<any> {
     const scores = [...Array(10)].map((_, i) => i + 1);
     const data: { score: number; x: string; y: number }[] = [];
 
@@ -139,7 +167,7 @@ export class TextsService {
     return { analytics: data, performance: userPerformance };
   }
 
-  async userWordsFromText(userId: number, textId: number): Promise<string[]> {
+  async userWordsFromText(userId: number, textId: string): Promise<string[]> {
     const text: Text = await this.findOne(textId);
     let words: string[] = [];
     if (text) {
@@ -168,10 +196,11 @@ export class TextsService {
     return words.map((w) => w.replace(/[^a-zA-Z0-9 ]/g, ''));
   }
 
-  prepareCreateTextData(text: GeneratedText): CreateTextDto {
+  prepareCreateTextData(text: GeneratedText): CreateDictationTextDto {
     return {
       content: text.content,
       wordCount: text.content.split(' ')?.length,
+      type: TextType.DICTATION,
       level: text.level,
       hash: generateHash(`${text.content}_${text.speaker}`),
     };

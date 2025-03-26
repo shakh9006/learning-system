@@ -3,7 +3,7 @@ import { CreatePerformanceDto } from './dto/create-performance.dto';
 import { PerformanceRepository } from './performance.repository';
 import { Performance } from '@prisma/client';
 import { Levels } from '../../../common/types/Levels';
-import { ScoreResult } from '../dictations/types/score-result.type';
+import { ScoreResult } from '../exercises/types/score-result.type';
 import { UpdatePerformanceDto } from './dto/update-performance.dto';
 
 @Injectable()
@@ -42,13 +42,13 @@ export class PerformanceService {
     return await this.performanceRepository.findLastByDictationId(dictationId);
   }
 
-  async getDictationAnalytics(textId: number) {
+  async getDictationAnalytics(textId: string) {
     return await this.performanceRepository.getDictationAnalytics(textId);
   }
 
   async getUserPerformanceByText(
     userId: number,
-    textId: number,
+    textId: string,
   ): Promise<Performance> {
     return await this.performanceRepository.getUserPerformanceByText(
       userId,

@@ -87,10 +87,10 @@ export class PerformanceRepository {
     return result;
   }
 
-  async getDictationAnalytics(textId: number) {
+  async getDictationAnalytics(textId: string) {
     const performances = await prisma.performance.findMany({
       where: {
-        dictation: {
+        exercise: {
           textId: textId,
         },
       },
@@ -112,7 +112,7 @@ export class PerformanceRepository {
 
   async getUserPerformanceByText(
     userId: number,
-    textId: number,
+    textId: string,
   ): Promise<Performance | null> {
     const dictation = await prisma.dictations.findFirst({
       where: {
