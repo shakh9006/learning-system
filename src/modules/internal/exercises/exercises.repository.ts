@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient, Dictations as Dictation } from '@prisma/client';
+import { PrismaClient, Exercises as Exercise } from '@prisma/client';
 import { CreatePerformanceDto } from '../performance/dto/create-performance.dto';
 
 const prisma = new PrismaClient();
 
 @Injectable()
-export class DictationsRepository {
+export class ExercisesRepository {
   async create(
     userId: number,
-    textId: number,
+    textId: string,
     performanceData: CreatePerformanceDto,
-  ): Promise<Dictation> {
-    return await prisma.dictations.create({
+  ): Promise<Exercise> {
+    return await prisma.exercises.create({
       data: {
         user: {
           connect: {
@@ -35,16 +35,16 @@ export class DictationsRepository {
     });
   }
 
-  async findAll(userId: number): Promise<Dictation[]> {
-    return await prisma.dictations.findMany({
+  async findAll(userId: number): Promise<Exercise[]> {
+    return await prisma.exercises.findMany({
       where: {
         userId,
       },
     });
   }
 
-  async findAllByText(userId: number, textId: number): Promise<Dictation[]> {
-    return await prisma.dictations.findMany({
+  async findAllByText(userId: number, textId: string): Promise<Exercise[]> {
+    return await prisma.exercises.findMany({
       where: {
         textId,
         userId,
@@ -52,8 +52,8 @@ export class DictationsRepository {
     });
   }
 
-  async findOne(userId: number, textId: number): Promise<Dictation> {
-    return await prisma.dictations.findFirst({
+  async findOne(userId: number, textId: string): Promise<Exercise> {
+    return await prisma.exercises.findFirst({
       where: {
         userId,
         textId,
@@ -64,7 +64,7 @@ export class DictationsRepository {
     });
   }
 
-  async getUserDictationCount(userId: number): Promise<number> {
-    return await prisma.dictations.count({ where: { userId } });
+  async getUserExerciseCount(userId: number): Promise<number> {
+    return await prisma.exercises.count({ where: { userId } });
   }
 }

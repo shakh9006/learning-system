@@ -19,6 +19,9 @@ CREATE TYPE "PointsReason" AS ENUM ('task', 'vocabulary', 'achievement');
 -- CreateEnum
 CREATE TYPE "AchievementsType" AS ENUM ('GENERAL', 'TEXTS', 'STREAK', 'VOCABULARY', 'LEADERBOARD');
 
+-- CreateEnum
+CREATE TYPE "TextType" AS ENUM ('DICTATION', 'SPEECH', 'DIALOG');
+
 -- CreateTable
 CREATE TABLE "Users" (
     "userId" SERIAL NOT NULL,
@@ -158,17 +161,28 @@ CREATE TABLE "Categories" (
 
 -- CreateTable
 CREATE TABLE "Texts" (
-    "textId" SERIAL NOT NULL,
+    "textId" TEXT NOT NULL,
     "content" TEXT NOT NULL,
-    "wordCount" SMALLINT NOT NULL,
     "level" "TextLevel" NOT NULL,
-    "hash" TEXT NOT NULL,
+    "type" "TextType" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "relatedId" INTEGER,
     "categoryId" INTEGER NOT NULL,
 
     CONSTRAINT "Texts_pkey" PRIMARY KEY ("textId")
+);
+
+-- CreateTable
+CREATE TABLE "DictationMeta" (
+    "dictationMetaId" SERIAL NOT NULL,
+    "textId" TEXT NOT NULL,
+    "hash" TEXT NOT NULL,
+    "wordCount" SMALLINT NOT NULL,
+    "relatedId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "DictationMeta_pkey" PRIMARY KEY ("dictationMetaId")
 );
 
 -- CreateTable
@@ -180,38 +194,38 @@ CREATE TABLE "AudioFiles" (
     "hashedFileName" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "textId" INTEGER NOT NULL,
+    "textId" TEXT NOT NULL,
 
     CONSTRAINT "AudioFiles_pkey" PRIMARY KEY ("audioFileId")
 );
 
 -- CreateTable
-CREATE TABLE "Dictations" (
-    "dictationId" SERIAL NOT NULL,
+CREATE TABLE "Exercises" (
+    "exerciseId" SERIAL NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" INTEGER NOT NULL,
-    "textId" INTEGER NOT NULL,
+    "textId" TEXT NOT NULL,
 
-    CONSTRAINT "Dictations_pkey" PRIMARY KEY ("dictationId")
+    CONSTRAINT "Exercises_pkey" PRIMARY KEY ("exerciseId")
 );
 
 -- CreateTable
 CREATE TABLE "Performance" (
     "performanceId" SERIAL NOT NULL,
-    "wpm" SMALLINT NOT NULL,
+    "wpm" SMALLINT,
     "accuracy" DOUBLE PRECISION NOT NULL,
-    "totalWords" SMALLINT NOT NULL,
-    "correctWords" SMALLINT NOT NULL,
-    "errorsCount" SMALLINT NOT NULL,
-    "duration" SMALLINT NOT NULL,
+    "totalWords" SMALLINT,
+    "correctWords" SMALLINT,
+    "errorsCount" SMALLINT,
+    "duration" SMALLINT,
     "score" SMALLINT NOT NULL,
-    "wpmPenalty" INTEGER NOT NULL,
-    "accuracyPenalty" INTEGER NOT NULL,
-    "userInput" TEXT NOT NULL,
+    "wpmPenalty" INTEGER,
+    "accuracyPenalty" INTEGER,
+    "userInput" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "dictationId" INTEGER NOT NULL,
+    "exerciseId" INTEGER NOT NULL,
 
     CONSTRAINT "Performance_pkey" PRIMARY KEY ("performanceId")
 );
@@ -247,10 +261,13 @@ CREATE UNIQUE INDEX "Points_userId_key" ON "Points"("userId");
 CREATE UNIQUE INDEX "Vocabulary_wordFileId_key" ON "Vocabulary"("wordFileId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Dictations_userId_textId_key" ON "Dictations"("userId", "textId");
+CREATE UNIQUE INDEX "DictationMeta_textId_key" ON "DictationMeta"("textId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Performance_dictationId_key" ON "Performance"("dictationId");
+CREATE UNIQUE INDEX "Exercises_userId_textId_key" ON "Exercises"("userId", "textId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Performance_exerciseId_key" ON "Performance"("exerciseId");
 
 -- AddForeignKey
 ALTER TABLE "Tokens" ADD CONSTRAINT "Tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Users"("userId") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -289,13 +306,16 @@ ALTER TABLE "Categories" ADD CONSTRAINT "Categories_userId_fkey" FOREIGN KEY ("u
 ALTER TABLE "Texts" ADD CONSTRAINT "Texts_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Categories"("categoryId") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AudioFiles" ADD CONSTRAINT "AudioFiles_textId_fkey" FOREIGN KEY ("textId") REFERENCES "Texts"("textId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "DictationMeta" ADD CONSTRAINT "DictationMeta_textId_fkey" FOREIGN KEY ("textId") REFERENCES "Texts"("textId") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Dictations" ADD CONSTRAINT "Dictations_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Users"("userId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AudioFiles" ADD CONSTRAINT "AudioFiles_textId_fkey" FOREIGN KEY ("textId") REFERENCES "DictationMeta"("textId") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Dictations" ADD CONSTRAINT "Dictations_textId_fkey" FOREIGN KEY ("textId") REFERENCES "Texts"("textId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Exercises" ADD CONSTRAINT "Exercises_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Users"("userId") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Performance" ADD CONSTRAINT "Performance_dictationId_fkey" FOREIGN KEY ("dictationId") REFERENCES "Dictations"("dictationId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Exercises" ADD CONSTRAINT "Exercises_textId_fkey" FOREIGN KEY ("textId") REFERENCES "Texts"("textId") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Performance" ADD CONSTRAINT "Performance_exerciseId_fkey" FOREIGN KEY ("exerciseId") REFERENCES "Exercises"("exerciseId") ON DELETE RESTRICT ON UPDATE CASCADE;
